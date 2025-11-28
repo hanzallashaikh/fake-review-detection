@@ -46,14 +46,9 @@ def create_features(text, rating, category):
 st.title("Fake Review Detector")
 st.markdown("### Instantly detect fake vs genuine product reviews")
 
-# Sample button
-if st.button("Load Sample Genuine Review"):
-    st.session_state.review = "This product is amazing! Great quality and fast shipping."
-    st.rerun()
-
 col1, col2 = st.columns([3,1])
 with col1:
-    review_text = st.text_area("Enter Review", height=180, placeholder="This is the best product ever!!!", key="review")
+    review_text = st.text_area("Enter Review", height=180, placeholder="This is the best product ever!!!")
 with col2:
     rating = st.slider("Rating", 1.0, 5.0, 4.0, 0.5)
     category = st.selectbox("Category", [
@@ -68,14 +63,15 @@ if st.button("Analyze Review", type="primary"):
     else:
         with st.spinner("Analyzing..."):
             X = create_features(review_text, rating, category)
-            proba = model.predict_proba(X)[0][1]
-            pred = "FAKE" if proba >= 0.5 else "GENUINE"
+            proba_raw = model.predict_proba(X)[0][1]
+            proba = float(proba_raw)  # ← THIS LINE FIXES IT: Force plain Python float
         
         st.markdown("### Result")
+        pred = "FAKE" if proba >= 0.5 else "GENUINE"
         if pred == "FAKE":
             st.error("**FAKE REVIEW DETECTED**")
         else:
             st.success("**GENUINE REVIEW**")
         
-        st.progress(proba)
+        st.progress(proba)  # Now works 100%
         st.write(f"**Fake Probability: {proba:.1%}**")
