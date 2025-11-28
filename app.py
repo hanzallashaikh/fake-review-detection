@@ -6,6 +6,9 @@ import re
 from textblob import TextBlob
 from scipy.sparse import hstack, csr_matrix
 
+# Move this to the VERY TOP – fixes the StreamlitAPIException
+st.set_page_config(page_title="Fake Review Detector", layout="centered")
+
 # Load model and preprocessors
 @st.cache_resource
 def load_model():
@@ -16,7 +19,7 @@ def load_model():
 
 model, tfidf, cat_columns = load_model()
 
-# Simple text cleaning — NO NLTK AT ALL
+# Simple text cleaning — NO NLTK
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text)
@@ -26,7 +29,7 @@ def clean_text(text):
 def create_features(text, rating, category):
     clean = clean_text(text)
     
-    # Basic features (no NLTK, no lemmatizer)
+    # Basic features
     length = len(text)
     word_count = len(text.split())
     avg_word_len = np.mean([len(w) for w in text.split()]) if word_count > 0 else 0
@@ -48,34 +51,34 @@ def create_features(text, rating, category):
     return final
 
 # UI
-st.set_page_config(page_title="Fake Review Detector", layout="centered")
 st.title("Fake Review Detector")
-st.markdown("### Detect fake reviews using AI (Live Demo)")
+st.markdown("Detect whether an online review is **genuine** or **fake** using AI")
 
 col1, col2 = st.columns([3,1])
 with col1:
-    review_text = st.text_area("Enter Review Text", height=180, placeholder="I love this product so much!!! Best ever...")
+    review_text = st.text_area("Review Text", height=180, placeholder="Paste the review here...")
 with col2:
-    rating = st.slider("Rating", 1.0, 5.0, 4.0, 0.5)
-    category = st.selectbox("Category", [
-        'Home_and_Kitchen_5', 'Clothing_Shoes_and_Jewelry_5', 'Electronics_5',
-        'Sports_and_Outdoors_5', 'Toys_and_Games_5', 'Books_5'
+    rating = st.slider("Rating", 1.0, 5.0, 3.0, 0.5)
+    category = st.selectbox("Product Category", [
+        'Home_and_Kitchen_5', 'Sports_and_Outdoors_5', 'Electronics_5',
+        'Movies_and_TV_5', 'Tools_and_Home_Improvement_5', 'Pet_Supplies_5',
+        'Kindle_Store_5', 'Books_5', 'Toys_and_Games_5', 'Clothing_Shoes_and_Jewelry_5'
     ])
 
-if st.button("Check if Fake", type="primary"):
+if st.button("Analyze Review", type="primary"):
     if not review_text.strip():
-        st.error("Please write a review")
+        st.error("Please enter a review")
     else:
         with st.spinner("Analyzing..."):
-            X = create_features(review_text, rating, category)
-            proba = model.predict_proba(X)[0][1]
-            pred = "FAKE" if proba > 0.5 else "GENUINE"
+            features = create_features(review_text, rating, category)
+            proba = model.predict_proba(features)[0][1]
+            pred = int(proba >= 0.5)
         
-        if pred == "FAKE":
-            st.error(f"FAKE REVIEW DETECTED!")
+        st.markdown("### Result")
+        if pred == 1:
+            st.error(f"**FAKE REVIEW DETECTED**")
         else:
-            st.success(f"GENUINE REVIEW")
+            st.success(f"**GENUINE REVIEW**")
         
         st.progress(proba)
-        st.write(f"**Fake Probability: {proba:.1%}**")
-        st.write(f"**Prediction: {pred}**")
+        st.write(f"Fake probability: **{proba:.1%}**")
